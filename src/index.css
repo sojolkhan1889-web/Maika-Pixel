@@ -1,0 +1,48 @@
+@import "tailwindcss";
+
+@theme {
+  --color-background: #0D0F14;
+  --color-sidebar: #12151C;
+  --color-card: #1A1D27;
+  --color-primary: #6C47FF;
+  --color-secondary: #00D4FF;
+  --color-success: #10B981;
+  --color-warning: #F59E0B;
+  --color-danger: #EF4444;
+  --color-text-primary: #F1F5F9;
+  --color-text-muted: #64748B;
+
+  --font-sans: "Inter", ui-sans-serif, system-ui, sans-serif;
+}
+
+@layer base {
+  body {
+    @apply bg-background text-text-primary font-sans antialiased selection:bg-primary/30;
+  }
+}
+
+@layer components {
+  .glass-card {
+    @apply bg-card border border-white/5 rounded-xl shadow-xl;
+  }
+
+  .btn-primary {
+    @apply bg-primary hover:bg-primary/90 text-white px-4 py-2 rounded-lg transition-all font-medium flex items-center justify-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed;
+  }
+  
+  .btn-secondary {
+    @apply bg-white/5 hover:bg-white/10 text-text-primary px-4 py-2 rounded-lg transition-all font-medium flex items-center justify-center gap-2 border border-white/10;
+  }
+
+  .input-field {
+    @apply bg-[#0D0F14] border border-white/10 rounded-lg px-4 py-2 text-text-primary focus:outline-none focus:border-primary focus:ring-1 focus:ring-primary transition-all w-full;
+  }
+
+  .sidebar-item {
+    @apply flex items-center gap-3 px-4 py-3 text-text-muted hover:text-text-primary hover:bg-white/5 rounded-lg transition-all cursor-pointer;
+  }
+
+  .sidebar-item.active {
+    @apply text-primary bg-primary/10 border-r-2 border-primary rounded-r-none;
+  }
+}

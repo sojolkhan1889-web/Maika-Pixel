@@ -1,0 +1,7 @@
+{
+  "name": "Maika Pixel",
+  "description": "SaaS Server-Side Tracking Platform for Facebook Conversions API (CAPI). Manage pixels, track orders, and block fraud customers.",
+  "requestFramePermissions": [
+    "geolocation"
+  ]
+}
