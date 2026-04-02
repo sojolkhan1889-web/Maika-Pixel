@@ -1,4 +1,4 @@
-import { useState, useMemo } from 'react';
+import { useState, useMemo, useEffect } from 'react';
 import { Search, Filter, ShieldAlert, ShieldCheck, MoreHorizontal, CheckCircle2, XCircle, Clock } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { useAppStore, Order } from '@/store/useAppStore';
@@ -6,9 +6,13 @@ import { useAppStore, Order } from '@/store/useAppStore';
 const TABS = ['All', 'Processing', 'Purchase', 'Confirmed', 'Delivered', 'Cancelled', 'Trash'];
 
 export function Orders() {
-  const { orders, customers, updateOrderStatus, toggleCustomerBlock } = useAppStore();
+  const { orders, customers, fetchOrders, updateOrderStatusAsync, toggleCustomerBlockAsync, isLoadingOrders } = useAppStore();
   const [activeTab, setActiveTab] = useState('All');
   const [searchQuery, setSearchQuery] = useState('');
+
+  useEffect(() => {
+    fetchOrders();
+  }, [fetchOrders]);
 
   // Filter orders based on tab and search
   const filteredOrders = useMemo(() => {
@@ -22,7 +26,7 @@ export function Orders() {
   }, [orders, activeTab, searchQuery]);
 
   const handleStatusChange = (orderId: string, newStatus: Order['status']) => {
-    updateOrderStatus(orderId, newStatus);
+    updateOrderStatusAsync(orderId, newStatus);
   };
 
   return (
@@ -87,7 +91,15 @@ export function Orders() {
               </tr>
             </thead>
             <tbody className="divide-y divide-white/5">
-              {filteredOrders.length === 0 ? (
+              {isLoadingOrders && orders.length === 0 ? (
+                <tr>
+                  <td colSpan={7} className="p-8 text-center text-text-muted">
+                    <div className="flex justify-center">
+                      <div className="w-6 h-6 border-2 border-primary/30 border-t-primary rounded-full animate-spin" />
+                    </div>
+                  </td>
+                </tr>
+              ) : filteredOrders.length === 0 ? (
                 <tr>
                   <td colSpan={7} className="p-8 text-center text-text-muted">No orders found.</td>
                 </tr>
@@ -134,7 +146,10 @@ export function Orders() {
                     <td className="p-4">
                       <div className="flex gap-2">
                         <button 
-                          onClick={() => toggleCustomerBlock(order.phone)}
+                          onClick={() => {
+                            const cust = customers.find(c => c.phone === order.phone);
+                            if (cust) toggleCustomerBlockAsync(cust.id, isBlocked);
+                          }}
                           className={cn(
                             "p-1.5 rounded transition-colors",
                             isBlocked ? "text-success hover:bg-success/10" : "text-text-muted hover:text-danger hover:bg-danger/10"

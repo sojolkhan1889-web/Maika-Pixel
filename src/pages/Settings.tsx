@@ -5,19 +5,23 @@ import { useAppStore, Settings as SettingsType } from '@/store/useAppStore';
 
 export function Settings() {
   const [activeTab, setActiveTab] = useState('fraud');
-  const { settings, updateSettings } = useAppStore();
+  const { settings, fetchSettings, updateSettingsAsync, isLoadingSettings } = useAppStore();
   
   // Local state for form editing
   const [localSettings, setLocalSettings] = useState<SettingsType>(settings);
   const [isSaved, setIsSaved] = useState(false);
+
+  useEffect(() => {
+    fetchSettings();
+  }, [fetchSettings]);
 
   // Sync local state if global state changes externally
   useEffect(() => {
     setLocalSettings(settings);
   }, [settings]);
 
-  const handleSave = () => {
-    updateSettings(localSettings);
+  const handleSave = async () => {
+    await updateSettingsAsync(localSettings);
     setIsSaved(true);
     setTimeout(() => setIsSaved(false), 2000);
   };
@@ -43,7 +47,12 @@ export function Settings() {
         <TabButton active={activeTab === 'facebook'} onClick={() => setActiveTab('facebook')} icon={Facebook} label="Facebook CAPI" />
       </div>
 
-      <div className="glass-card p-6">
+      <div className="glass-card p-6 relative">
+        {isLoadingSettings && (
+          <div className="absolute inset-0 bg-background/50 backdrop-blur-sm z-10 flex items-center justify-center rounded-xl">
+            <div className="w-8 h-8 border-4 border-primary/30 border-t-primary rounded-full animate-spin" />
+          </div>
+        )}
         {activeTab === 'fraud' && (
           <div className="space-y-6">
             <h3 className="text-lg font-semibold">Fraud Customer Block Settings</h3>

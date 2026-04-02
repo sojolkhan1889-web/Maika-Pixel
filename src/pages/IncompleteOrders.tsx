@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useAppStore, IncompleteOrder } from '@/store/useAppStore';
 import { 
   ShoppingCart, 
@@ -17,9 +17,21 @@ import { format, formatDistanceToNow } from 'date-fns';
 import { cn } from '@/lib/utils';
 
 export function IncompleteOrders() {
-  const { incompleteOrders, updateIncompleteOrderStatus, deleteIncompleteOrder, updateLastContacted } = useAppStore();
+  const { 
+    incompleteOrders, 
+    fetchIncompleteOrders,
+    updateIncompleteOrderStatusAsync, 
+    deleteIncompleteOrderAsync, 
+    updateLastContactedAsync,
+    isLoadingIncompleteOrders
+  } = useAppStore();
+  
   const [searchTerm, setSearchTerm] = useState('');
   const [statusFilter, setStatusFilter] = useState<string>('all');
+
+  useEffect(() => {
+    fetchIncompleteOrders();
+  }, [fetchIncompleteOrders]);
 
   // Metrics Calculation
   const totalAbandoned = incompleteOrders.length;
@@ -45,7 +57,7 @@ export function IncompleteOrders() {
   }).sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime());
 
   const handleWhatsAppContact = (order: IncompleteOrder) => {
-    updateLastContacted(order.id);
+    updateLastContactedAsync(order.id);
     const phone = order.phone.replace(/[^0-9]/g, '');
     const message = encodeURIComponent(`Hi ${order.customerName || 'there'},\n\nWe noticed you left "${order.productName}" in your cart. Do you need any help completing your order? Let us know!`);
     window.open(`https://wa.me/${phone}?text=${message}`, '_blank');
@@ -155,7 +167,15 @@ export function IncompleteOrders() {
               </tr>
             </thead>
             <tbody>
-              {filteredOrders.length === 0 ? (
+              {isLoadingIncompleteOrders && incompleteOrders.length === 0 ? (
+                <tr>
+                  <td colSpan={5} className="p-12 text-center text-text-muted">
+                    <div className="flex justify-center">
+                      <div className="w-6 h-6 border-2 border-primary/30 border-t-primary rounded-full animate-spin" />
+                    </div>
+                  </td>
+                </tr>
+              ) : filteredOrders.length === 0 ? (
                 <tr>
                   <td colSpan={5} className="p-12 text-center text-text-muted">
                     No incomplete orders found.
@@ -203,14 +223,14 @@ export function IncompleteOrders() {
                               <MessageCircle className="w-4 h-4" />
                             </button>
                             <button 
-                              onClick={() => updateIncompleteOrderStatus(order.id, 'Recovered')}
+                              onClick={() => updateIncompleteOrderStatusAsync(order.id, 'Recovered')}
                               className="p-2 bg-success/10 text-success hover:bg-success/20 rounded-lg transition-colors"
                               title="Mark as Recovered"
                             >
                               <CheckCircle2 className="w-4 h-4" />
                             </button>
                             <button 
-                              onClick={() => updateIncompleteOrderStatus(order.id, 'Lost')}
+                              onClick={() => updateIncompleteOrderStatusAsync(order.id, 'Lost')}
                               className="p-2 bg-danger/10 text-danger hover:bg-danger/20 rounded-lg transition-colors"
                               title="Mark as Lost"
                             >
@@ -219,7 +239,7 @@ export function IncompleteOrders() {
                           </>
                         )}
                         <button 
-                          onClick={() => deleteIncompleteOrder(order.id)}
+                          onClick={() => deleteIncompleteOrderAsync(order.id)}
                           className="p-2 text-text-muted hover:text-danger hover:bg-danger/10 rounded-lg transition-colors ml-2"
                           title="Delete Record"
                         >

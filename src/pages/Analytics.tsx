@@ -1,4 +1,4 @@
-import { useState, useMemo } from 'react';
+import { useState, useMemo, useEffect } from 'react';
 import { 
   LineChart, Line, BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, PieChart, Pie, Cell, Legend
 } from 'recharts';
@@ -10,78 +10,97 @@ import { cn } from '@/lib/utils';
 const COLORS = ['#6C47FF', '#10B981', '#EF4444', '#F59E0B', '#00D4FF', '#8B5CF6'];
 
 // Helper to parse currency strings like "৳ 2,450" to numbers
-const parseCurrency = (val: string) => Number(val.replace(/[^0-9.-]+/g, ""));
+const parseCurrency = (val: string | number) => {
+  if (typeof val === 'number') return val;
+  if (!val) return 0;
+  return Number(val.toString().replace(/[^0-9.-]+/g, ""));
+};
 
 export function Analytics() {
-  const { orders, customers } = useAppStore();
+  const { eventLogs, customers, fetchEventLogs } = useAppStore();
   const [dateRange, setDateRange] = useState<'today' | '7days' | '30days' | 'all'>('all');
 
-  // 1. Filter Orders based on Date Range
-  const filteredOrders = useMemo(() => {
-    const now = new Date();
-    return orders.filter(o => {
-      // Handle both ISO strings and "YYYY-MM-DD hh:mm AM/PM" formats safely
-      const orderDate = new Date(o.date);
-      if (isNaN(orderDate.getTime())) return true; // Fallback if date is unparseable
+  useEffect(() => {
+    fetchEventLogs();
+  }, [fetchEventLogs]);
 
-      if (dateRange === 'today') return isAfter(orderDate, startOfDay(now));
-      if (dateRange === '7days') return isAfter(orderDate, subDays(now, 7));
-      if (dateRange === '30days') return isAfter(orderDate, subDays(now, 30));
+  // 1. Filter Events based on Date Range
+  const filteredEvents = useMemo(() => {
+    const now = new Date();
+    return eventLogs.filter(e => {
+      const eventDate = new Date(e.timestamp);
+      if (isNaN(eventDate.getTime())) return true;
+
+      if (dateRange === 'today') return isAfter(eventDate, startOfDay(now));
+      if (dateRange === '7days') return isAfter(eventDate, subDays(now, 7));
+      if (dateRange === '30days') return isAfter(eventDate, subDays(now, 30));
       return true;
     });
-  }, [orders, dateRange]);
+  }, [eventLogs, dateRange]);
 
   // 2. Calculate Key Metrics
   const metrics = useMemo(() => {
-    const totalRevenue = filteredOrders.reduce((sum, o) => sum + parseCurrency(o.total), 0);
-    const totalOrders = filteredOrders.length;
-    const fbEventsSent = filteredOrders.filter(o => o.fbStatus === 'Sent').length;
-    const successfulOrders = filteredOrders.filter(o => ['Purchase', 'Confirmed', 'Delivered'].includes(o.status)).length;
-    const conversionRate = totalOrders > 0 ? ((successfulOrders / totalOrders) * 100).toFixed(1) : '0.0';
+    const purchaseEvents = filteredEvents.filter(e => e.eventName === 'Purchase');
+    
+    const totalRevenue = purchaseEvents.reduce((sum, e) => {
+      const value = e.eventData?.value || e.eventData?.total_amount || e.eventData?.product_price || 0;
+      return sum + parseCurrency(value);
+    }, 0);
+    
+    const totalEvents = filteredEvents.length;
+    const fbEventsSent = filteredEvents.filter(e => e.status === 'success').length;
+    const totalPurchases = purchaseEvents.length;
+    const conversionRate = totalEvents > 0 ? ((totalPurchases / totalEvents) * 100).toFixed(1) : '0.0';
 
-    return { totalRevenue, totalOrders, fbEventsSent, conversionRate };
-  }, [filteredOrders]);
+    return { totalRevenue, totalEvents, fbEventsSent, conversionRate, totalPurchases };
+  }, [filteredEvents]);
 
-  // 3. Prepare Trend Chart Data (Revenue & Orders over time)
+  // 3. Prepare Trend Chart Data (Revenue & Events over time)
   const trendData = useMemo(() => {
-    const grouped = filteredOrders.reduce((acc, order) => {
-      const dateObj = new Date(order.date);
+    const grouped = filteredEvents.reduce((acc, event) => {
+      const dateObj = new Date(event.timestamp);
       const dateStr = isNaN(dateObj.getTime()) ? 'Unknown' : format(dateObj, 'MMM dd');
       
       if (!acc[dateStr]) {
-        acc[dateStr] = { name: dateStr, orders: 0, revenue: 0, timestamp: dateObj.getTime() || 0 };
+        acc[dateStr] = { name: dateStr, events: 0, revenue: 0, timestamp: dateObj.getTime() || 0 };
       }
-      acc[dateStr].orders += 1;
-      acc[dateStr].revenue += parseCurrency(order.total);
+      
+      acc[dateStr].events += 1;
+      
+      if (event.eventName === 'Purchase') {
+        const value = event.eventData?.value || event.eventData?.total_amount || event.eventData?.product_price || 0;
+        acc[dateStr].revenue += parseCurrency(value);
+      }
+      
       return acc;
-    }, {} as Record<string, { name: string, orders: number, revenue: number, timestamp: number }>);
+    }, {} as Record<string, { name: string, events: number, revenue: number, timestamp: number }>);
 
     return Object.values(grouped).sort((a: any, b: any) => a.timestamp - b.timestamp);
-  }, [filteredOrders]);
+  }, [filteredEvents]);
 
-  // 4. Prepare Order Status Distribution Data
+  // 4. Prepare Event Distribution Data
   const statusData = useMemo(() => {
-    const counts = filteredOrders.reduce((acc, order) => {
-      acc[order.status] = (acc[order.status] || 0) + 1;
+    const counts = filteredEvents.reduce((acc, event) => {
+      acc[event.eventName] = (acc[event.eventName] || 0) + 1;
       return acc;
     }, {} as Record<string, number>);
 
     return Object.keys(counts).map(key => ({ name: key, value: counts[key] }));
-  }, [filteredOrders]);
+  }, [filteredEvents]);
 
   // 5. Prepare FB CAPI Performance Data
   const fbCapiData = useMemo(() => {
-    const counts = filteredOrders.reduce((acc, order) => {
-      acc[order.fbStatus] = (acc[order.fbStatus] || 0) + 1;
+    const counts = filteredEvents.reduce((acc, event) => {
+      acc[event.status] = (acc[event.status] || 0) + 1;
       return acc;
     }, {} as Record<string, number>);
 
     return [
-      { name: 'Sent', value: counts['Sent'] || 0, fill: '#10B981' },
-      { name: 'Pending', value: counts['Pending'] || 0, fill: '#F59E0B' },
-      { name: 'Failed', value: counts['Failed'] || 0, fill: '#EF4444' },
+      { name: 'Success', value: counts['success'] || 0, fill: '#10B981' },
+      { name: 'Pending', value: counts['pending'] || 0, fill: '#F59E0B' },
+      { name: 'Failed', value: counts['failed'] || 0, fill: '#EF4444' },
     ];
-  }, [filteredOrders]);
+  }, [filteredEvents]);
 
   // 6. Top Customers
   const topCustomers = useMemo(() => {
@@ -117,8 +136,8 @@ export function Analytics() {
           bg="bg-success/10" 
         />
         <MetricCard 
-          title="Total Orders" 
-          value={metrics.totalOrders.toString()} 
+          title="Total Events" 
+          value={metrics.totalEvents.toString()} 
           icon={ShoppingCart} 
           color="text-primary" 
           bg="bg-primary/10" 
@@ -144,7 +163,7 @@ export function Analytics() {
         {/* Revenue & Orders Trend */}
         <div className="glass-card p-6 lg:col-span-2">
           <h3 className="text-lg font-semibold mb-6 flex items-center gap-2">
-            <Calendar className="w-5 h-5 text-primary" /> Revenue & Orders Trend
+            <Calendar className="w-5 h-5 text-primary" /> Revenue & Events Trend
           </h3>
           <div className="h-[300px]">
             {trendData.length > 0 ? (
@@ -160,7 +179,7 @@ export function Analytics() {
                   />
                   <Legend wrapperStyle={{ paddingTop: '20px' }} />
                   <Line yAxisId="left" type="monotone" name="Revenue" dataKey="revenue" stroke="#10B981" strokeWidth={3} dot={{ r: 4, fill: '#10B981' }} activeDot={{ r: 6 }} />
-                  <Line yAxisId="right" type="monotone" name="Orders" dataKey="orders" stroke="#6C47FF" strokeWidth={3} dot={{ r: 4, fill: '#6C47FF' }} activeDot={{ r: 6 }} />
+                  <Line yAxisId="right" type="monotone" name="Events" dataKey="events" stroke="#6C47FF" strokeWidth={3} dot={{ r: 4, fill: '#6C47FF' }} activeDot={{ r: 6 }} />
                 </LineChart>
               </ResponsiveContainer>
             ) : (
@@ -169,10 +188,10 @@ export function Analytics() {
           </div>
         </div>
 
-        {/* Order Status Distribution */}
+        {/* Event Distribution */}
         <div className="glass-card p-6">
           <h3 className="text-lg font-semibold mb-6 flex items-center gap-2">
-            <ShoppingCart className="w-5 h-5 text-primary" /> Order Status
+            <ShoppingCart className="w-5 h-5 text-primary" /> Event Distribution
           </h3>
           <div className="h-[250px]">
             {statusData.length > 0 ? (

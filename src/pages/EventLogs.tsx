@@ -1,14 +1,25 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useAppStore } from '@/store/useAppStore';
 import { Activity, Search, Filter, RefreshCw, CheckCircle2, XCircle, Clock } from 'lucide-react';
 import { format } from 'date-fns';
 import { cn } from '@/lib/utils';
 
 export function EventLogs() {
-  const { eventLogs, pixels, clearEventLogs } = useAppStore();
+  const { eventLogs, pixels, fetchEventLogs, isLoadingEvents } = useAppStore();
   const [searchTerm, setSearchTerm] = useState('');
   const [statusFilter, setStatusFilter] = useState<string>('all');
   const [pixelFilter, setPixelFilter] = useState<string>('all');
+
+  useEffect(() => {
+    fetchEventLogs();
+    
+    // Polling every 10 seconds
+    const interval = setInterval(() => {
+      fetchEventLogs();
+    }, 10000);
+    
+    return () => clearInterval(interval);
+  }, [fetchEventLogs]);
 
   const filteredLogs = eventLogs.filter(log => {
     const matchesSearch = log.eventName.toLowerCase().includes(searchTerm.toLowerCase()) || 
@@ -48,11 +59,11 @@ export function EventLogs() {
           <p className="text-text-muted mt-1">Live tracking of events sent from your website to Maika Pixel.</p>
         </div>
         <button 
-          onClick={clearEventLogs}
+          onClick={() => fetchEventLogs()}
           className="px-4 py-2 bg-white/5 hover:bg-white/10 text-text border border-white/10 rounded-lg transition-colors text-sm font-medium flex items-center gap-2"
         >
-          <RefreshCw className="w-4 h-4" />
-          Clear Logs
+          <RefreshCw className={cn("w-4 h-4", isLoadingEvents && "animate-spin")} />
+          Refresh Logs
         </button>
       </div>
 
@@ -112,7 +123,15 @@ export function EventLogs() {
               </tr>
             </thead>
             <tbody>
-              {filteredLogs.length === 0 ? (
+              {isLoadingEvents && eventLogs.length === 0 ? (
+                <tr>
+                  <td colSpan={5} className="p-8 text-center text-text-muted">
+                    <div className="flex justify-center">
+                      <div className="w-6 h-6 border-2 border-primary/30 border-t-primary rounded-full animate-spin" />
+                    </div>
+                  </td>
+                </tr>
+              ) : filteredLogs.length === 0 ? (
                 <tr>
                   <td colSpan={5} className="p-8 text-center text-text-muted">
                     No event logs found matching your criteria.

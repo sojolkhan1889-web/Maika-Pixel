@@ -1,5 +1,6 @@
-import { BrowserRouter, Routes, Route } from 'react-router-dom';
+import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
 import { Layout } from './components/layout/Layout';
+import { AdminLayout } from './components/layout/AdminLayout';
 import { Dashboard } from './pages/Dashboard';
 import { Orders } from './pages/Orders';
 import { Settings } from './pages/Settings';
@@ -11,6 +12,9 @@ import { ExportData } from './pages/ExportData';
 import { UserAccount } from './pages/UserAccount';
 import { Subscription } from './pages/Subscription';
 import { Analytics } from './pages/Analytics';
+import { AdminDashboard } from './pages/admin/AdminDashboard';
+import { AdminSellers } from './pages/admin/AdminSellers';
+import { AdminLogs } from './pages/admin/AdminLogs';
 
 export default function App() {
   return (
@@ -28,6 +32,14 @@ export default function App() {
           <Route path="analytics" element={<Analytics />} />
           <Route path="export" element={<ExportData />} />
           <Route path="account" element={<UserAccount />} />
+        </Route>
+
+        {/* Admin Routes */}
+        <Route path="/admin" element={<AdminLayout />}>
+          <Route index element={<AdminDashboard />} />
+          <Route path="sellers" element={<AdminSellers />} />
+          <Route path="logs" element={<AdminLogs />} />
+          <Route path="*" element={<Navigate to="/admin" replace />} />
         </Route>
       </Routes>
     </BrowserRouter>

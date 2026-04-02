@@ -1,3 +1,4 @@
+import { useEffect } from 'react';
 import { Check, CreditCard } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { useAppStore } from '@/store/useAppStore';
@@ -51,10 +52,19 @@ const PLANS = [
 ];
 
 export function Subscription() {
-  const { subscriptionPlan, setSubscriptionPlan } = useAppStore();
+  const { subscriptionPlan, fetchSubscription, upgradeSubscriptionAsync, isLoadingSubscription } = useAppStore();
+
+  useEffect(() => {
+    fetchSubscription();
+  }, [fetchSubscription]);
 
   return (
-    <div className="space-y-8 max-w-6xl mx-auto">
+    <div className="space-y-8 max-w-6xl mx-auto relative">
+      {isLoadingSubscription && (
+        <div className="absolute inset-0 bg-background/50 backdrop-blur-sm z-50 flex items-center justify-center rounded-xl">
+          <div className="w-8 h-8 border-4 border-primary/30 border-t-primary rounded-full animate-spin" />
+        </div>
+      )}
       <div className="text-center max-w-2xl mx-auto">
         <h1 className="text-3xl font-bold">Subscription Plans</h1>
         <p className="text-text-muted mt-2">
@@ -104,7 +114,7 @@ export function Subscription() {
               </ul>
 
               <button 
-                onClick={() => setSubscriptionPlan(plan.id)}
+                onClick={() => upgradeSubscriptionAsync(plan.id)}
                 className={cn(
                   "w-full py-3 rounded-lg font-medium transition-all flex items-center justify-center gap-2",
                   isCurrent 

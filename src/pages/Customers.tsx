@@ -1,11 +1,16 @@
-import { useState, useMemo } from 'react';
+import { useState, useMemo, useEffect } from 'react';
 import { Search, Filter, ShieldAlert, ShieldCheck, MoreHorizontal, Download } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { useAppStore } from '@/store/useAppStore';
+import { format } from 'date-fns';
 
 export function Customers() {
-  const { customers, toggleCustomerBlock } = useAppStore();
+  const { customers, fetchCustomers, toggleCustomerBlockAsync, isLoadingCustomers } = useAppStore();
   const [searchQuery, setSearchQuery] = useState('');
+
+  useEffect(() => {
+    fetchCustomers();
+  }, [fetchCustomers]);
 
   const filteredCustomers = useMemo(() => {
     return customers.filter(c => 
@@ -61,7 +66,15 @@ export function Customers() {
               </tr>
             </thead>
             <tbody className="divide-y divide-white/5">
-              {filteredCustomers.length === 0 ? (
+              {isLoadingCustomers && customers.length === 0 ? (
+                <tr>
+                  <td colSpan={6} className="p-8 text-center text-text-muted">
+                    <div className="flex justify-center">
+                      <div className="w-6 h-6 border-2 border-primary/30 border-t-primary rounded-full animate-spin" />
+                    </div>
+                  </td>
+                </tr>
+              ) : filteredCustomers.length === 0 ? (
                 <tr>
                   <td colSpan={6} className="p-8 text-center text-text-muted">No customers found.</td>
                 </tr>
@@ -72,7 +85,7 @@ export function Customers() {
                   <tr key={customer.id} className="hover:bg-white/[0.02] transition-colors">
                     <td className="p-4">
                       <div className="font-medium text-primary">{customer.name}</div>
-                      <div className="text-xs text-text-muted">Joined: {customer.joinDate}</div>
+                      <div className="text-xs text-text-muted">Joined: {format(new Date(customer.joinDate), 'MMM dd, yyyy')}</div>
                     </td>
                     <td className="p-4">
                       <div className="text-sm">{customer.phone}</div>
@@ -109,7 +122,7 @@ export function Customers() {
                     <td className="p-4">
                       <div className="flex gap-2">
                         <button 
-                          onClick={() => toggleCustomerBlock(customer.phone)}
+                          onClick={() => toggleCustomerBlockAsync(customer.id, customer.isBlocked)}
                           className={cn(
                             "p-1.5 rounded transition-colors",
                             customer.isBlocked ? "text-success hover:bg-success/10" : "text-text-muted hover:text-danger hover:bg-danger/10"

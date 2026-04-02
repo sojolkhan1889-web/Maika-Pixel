@@ -1,41 +1,62 @@
+import { useEffect } from 'react';
 import { 
   LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, PieChart, Pie, Cell
 } from 'recharts';
 import { ArrowUpRight, ArrowDownRight, ShoppingCart, Target, Users, ShieldAlert } from 'lucide-react';
 import { useAppStore } from '@/store/useAppStore';
+import { format, subDays, isAfter } from 'date-fns';
 
 const COLORS = ['#6C47FF', '#10B981', '#EF4444', '#F59E0B', '#00D4FF'];
 
 export function Dashboard() {
-  const { orders, customers, pixels } = useAppStore();
+  const { eventLogs, pixels, fetchEventLogs, fetchPixels } = useAppStore();
 
-  // Calculate dynamic stats
-  const totalOrders = orders.length;
-  const blockedCustomers = customers.filter(c => c.isBlocked).length;
+  useEffect(() => {
+    fetchEventLogs();
+    fetchPixels();
+  }, [fetchEventLogs, fetchPixels]);
+
+  // Calculate dynamic stats from real eventLogs
+  const totalEvents = eventLogs.length;
   const activePixels = pixels.filter(p => p.status === 'active').length;
-  const eventsSent = orders.filter(o => o.fbStatus === 'Sent').length * 3; // Mock multiplier for events
+  const eventsSent = eventLogs.filter(e => e.status === 'success').length;
+  
+  // Calculate Purchases
+  const purchases = eventLogs.filter(e => e.eventName === 'Purchase').length;
 
-  // Calculate Pie Chart Data dynamically
-  const statusCounts = orders.reduce((acc, order) => {
-    acc[order.status] = (acc[order.status] || 0) + 1;
+  // Calculate Pie Chart Data dynamically based on Event Names
+  const eventCounts = eventLogs.reduce((acc, log) => {
+    acc[log.eventName] = (acc[log.eventName] || 0) + 1;
     return acc;
   }, {} as Record<string, number>);
 
-  const pieData = Object.keys(statusCounts).map(key => ({
+  const pieData = Object.keys(eventCounts).map(key => ({
     name: key,
-    value: statusCounts[key]
+    value: eventCounts[key]
   }));
 
-  // Mock line chart data
-  const data = [
-    { name: 'Mon', events: 40, purchases: 24 },
-    { name: 'Tue', events: 30, purchases: 13 },
-    { name: 'Wed', events: 20, purchases: 98 },
-    { name: 'Thu', events: 27, purchases: 39 },
-    { name: 'Fri', events: 18, purchases: 48 },
-    { name: 'Sat', events: 23, purchases: 38 },
-    { name: 'Sun', events: 34, purchases: 43 },
-  ];
+  // Generate line chart data for the last 7 days
+  const generateChartData = () => {
+    const data = [];
+    for (let i = 6; i >= 0; i--) {
+      const date = subDays(new Date(), i);
+      const dateStr = format(date, 'MMM dd');
+      
+      const dayEvents = eventLogs.filter(log => {
+        const logDate = new Date(log.timestamp);
+        return logDate.getDate() === date.getDate() && logDate.getMonth() === date.getMonth();
+      });
+
+      data.push({
+        name: dateStr,
+        events: dayEvents.length,
+        purchases: dayEvents.filter(e => e.eventName === 'Purchase').length
+      });
+    }
+    return data;
+  };
+
+  const data = generateChartData();
 
   return (
     <div className="space-y-6">
@@ -46,9 +67,9 @@ export function Dashboard() {
 
       {/* Stats Grid */}
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
-        <StatCard title="Total Orders" value={totalOrders.toString()} trend="+12.5%" isPositive={true} icon={ShoppingCart} />
+        <StatCard title="Total Events" value={totalEvents.toString()} trend="+12.5%" isPositive={true} icon={Target} />
         <StatCard title="Events Sent to FB" value={eventsSent.toString()} trend="+5.2%" isPositive={true} icon={Target} />
-        <StatCard title="Blocked Customers" value={blockedCustomers.toString()} trend="-2.4%" isPositive={false} icon={ShieldAlert} />
+        <StatCard title="Total Purchases" value={purchases.toString()} trend="+2.4%" isPositive={true} icon={ShoppingCart} />
         <StatCard title="Active Pixels" value={activePixels.toString()} trend="0%" isPositive={true} icon={Users} />
       </div>
 
@@ -72,7 +93,7 @@ export function Dashboard() {
 
         {/* Pie Chart */}
         <div className="glass-card p-6">
-          <h3 className="text-lg font-semibold mb-4">Order Status Distribution</h3>
+          <h3 className="text-lg font-semibold mb-4">Event Distribution</h3>
           <div className="h-[300px]">
             {pieData.length > 0 ? (
               <ResponsiveContainer width="100%" height="100%">

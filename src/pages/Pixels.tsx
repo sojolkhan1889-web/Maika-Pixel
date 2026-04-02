@@ -1,26 +1,28 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Target, Plus, Trash2, Activity, CheckCircle2, XCircle, Code, Copy, Check, X, Download } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { useAppStore, Pixel } from '@/store/useAppStore';
 
 export function Pixels() {
-  const { pixels, addPixel } = useAppStore();
+  const { pixels, createPixelAsync, fetchPixels, isLoadingPixels } = useAppStore();
   const [isAdding, setIsAdding] = useState(false);
   const [newPixelName, setNewPixelName] = useState('');
   const [newPixelId, setNewPixelId] = useState('');
   const [newAccessToken, setNewAccessToken] = useState('');
   const [installPixel, setInstallPixel] = useState<Pixel | null>(null);
 
-  const handleAddPixel = (e: React.FormEvent) => {
+  useEffect(() => {
+    fetchPixels();
+  }, [fetchPixels]);
+
+  const handleAddPixel = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!newPixelName || !newPixelId || !newAccessToken) return;
     
-    addPixel({
-      id: Date.now().toString(),
+    await createPixelAsync({
       name: newPixelName,
       pixelId: newPixelId,
       accessToken: newAccessToken,
-      status: 'active',
       events: {
         PageView: true,
         ViewContent: true,
@@ -94,7 +96,11 @@ export function Pixels() {
       )}
 
       <div className="grid grid-cols-1 xl:grid-cols-2 gap-6">
-        {pixels.length === 0 ? (
+        {isLoadingPixels ? (
+          <div className="col-span-full p-12 text-center text-text-muted glass-card flex justify-center">
+            <div className="w-8 h-8 border-4 border-primary/30 border-t-primary rounded-full animate-spin" />
+          </div>
+        ) : pixels.length === 0 ? (
           <div className="col-span-full p-12 text-center text-text-muted glass-card">
             No pixels added yet. Click "Add New Pixel" to get started.
           </div>
@@ -111,7 +117,7 @@ export function Pixels() {
 }
 
 function PixelCard({ pixel, onInstall }: { key?: string; pixel: Pixel; onInstall: () => void }) {
-  const { togglePixelEvent, deletePixel } = useAppStore();
+  const { togglePixelEvent, deletePixelAsync } = useAppStore();
 
   return (
     <div className="glass-card overflow-hidden flex flex-col">
@@ -149,7 +155,7 @@ function PixelCard({ pixel, onInstall }: { key?: string; pixel: Pixel; onInstall
             Install
           </button>
           <button 
-            onClick={() => deletePixel(pixel.id)}
+            onClick={() => deletePixelAsync(pixel.id)}
             className="p-2 text-text-muted hover:text-danger hover:bg-danger/10 rounded-lg transition-colors"
           >
             <Trash2 className="w-4 h-4" />
@@ -238,7 +244,7 @@ function InstallModal({ pixel, onClose }: { pixel: Pixel; onClose: () => void })
 (m[e].q=m[e].q||[]).push(arguments)};m[e].l=1*new Date();
 p=a.createElement(i);x=a.getElementsByTagName(i)[0];
 p.async=1;p.src=k;x.parentNode.insertBefore(p,x)
-}(window,document,'script','https://cdn.maikapixel.com/tracker.js','maika');
+}(window,document,'script','https://your-backend-domain.com/tracker.js','maika');
 
 // Initialize with your Pixel ID
 maika('init', '${pixel.pixelId}');
