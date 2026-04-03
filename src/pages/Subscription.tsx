@@ -1,66 +1,35 @@
 import { useEffect } from 'react';
 import { Check, CreditCard } from 'lucide-react';
+import { useState } from 'react';
 import { cn } from '@/lib/utils';
 import { useAppStore } from '@/store/useAppStore';
 
-const PLANS = [
-  {
-    id: 'basic',
-    name: 'Basic',
-    price: '৳999',
-    period: '/mo',
-    description: 'Perfect for small businesses just getting started with CAPI.',
-    features: [
-      '1 Website',
-      '1 Facebook Pixel',
-      '500 Orders / month',
-      'Basic Fraud Block',
-      'Standard Support'
-    ]
-  },
-  {
-    id: 'pro',
-    name: 'Pro',
-    price: '৳2499',
-    period: '/mo',
-    description: 'Ideal for growing e-commerce stores with higher volume.',
-    features: [
-      '5 Websites',
-      '5 Facebook Pixels',
-      'Unlimited Orders',
-      'Advanced Fraud Block',
-      'Priority Support',
-      'Incomplete Order Tracking'
-    ],
-    popular: true
-  },
-  {
-    id: 'enterprise',
-    name: 'Enterprise',
-    price: '৳4999',
-    period: '/mo',
-    description: 'For agencies and large scale businesses requiring maximum power.',
-    features: [
-      'Unlimited Websites',
-      'Unlimited Pixels',
-      'Unlimited Orders',
-      'Custom Event Mapping',
-      '24/7 Dedicated Support',
-      'White-label Reports'
-    ]
-  }
-];
+// Dynamic Plans replaced static mapping
 
 export function Subscription() {
   const { subscriptionPlan, fetchSubscription, upgradeSubscriptionAsync, isLoadingSubscription } = useAppStore();
+  const [plans, setPlans] = useState<any[]>([]);
+  const [loadingPlans, setLoadingPlans] = useState(true);
 
   useEffect(() => {
     fetchSubscription();
+    fetch('/api/subscriptions/plans')
+      .then(res => res.json())
+      .then(data => {
+         if (data.success) {
+            setPlans(data.data);
+         }
+         setLoadingPlans(false);
+      })
+      .catch(err => {
+         console.error('Failed to load plans', err);
+         setLoadingPlans(false);
+      });
   }, [fetchSubscription]);
 
   return (
     <div className="space-y-8 max-w-6xl mx-auto relative">
-      {isLoadingSubscription && (
+      {(isLoadingSubscription || loadingPlans) && (
         <div className="absolute inset-0 bg-background/50 backdrop-blur-sm z-50 flex items-center justify-center rounded-xl">
           <div className="w-8 h-8 border-4 border-primary/30 border-t-primary rounded-full animate-spin" />
         </div>
@@ -72,16 +41,18 @@ export function Subscription() {
         </p>
       </div>
 
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-8 pt-8">
-        {PLANS.map((plan) => {
-          const isCurrent = subscriptionPlan === plan.id;
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 pt-8">
+        {plans.map((plan: any) => {
+          const isCurrent = subscriptionPlan === plan.name;
+          // Determine scale visually based on arbitrary heuristic for 'popular' if desired, or skip it.
+          const isPopular = plan.name === 'pro';
           
           return (
             <div 
               key={plan.id}
               className={cn(
-                "relative glass-card p-8 flex flex-col transition-all duration-300",
-                plan.popular && !isCurrent && "border-primary shadow-[0_0_30px_rgba(108,71,255,0.15)] scale-105 z-10",
+                "relative glass-card p-6 flex flex-col transition-all duration-300",
+                isPopular && !isCurrent && "border-primary shadow-[0_0_30px_rgba(108,71,255,0.15)] scale-105 z-10",
                 isCurrent && "border-success shadow-[0_0_30px_rgba(16,185,129,0.15)] scale-105 z-10"
               )}
             >
@@ -89,22 +60,22 @@ export function Subscription() {
                 <div className="absolute -top-4 left-1/2 -translate-x-1/2 bg-success text-white text-xs font-bold uppercase tracking-wider py-1 px-3 rounded-full">
                   Current Plan
                 </div>
-              ) : plan.popular ? (
+              ) : isPopular ? (
                 <div className="absolute -top-4 left-1/2 -translate-x-1/2 bg-primary text-white text-xs font-bold uppercase tracking-wider py-1 px-3 rounded-full">
                   Most Popular
                 </div>
               ) : null}
               
-              <div className="mb-8">
-                <h3 className="text-xl font-bold">{plan.name}</h3>
-                <p className="text-sm text-text-muted mt-2 h-10">{plan.description}</p>
-                <div className="mt-6 flex items-baseline gap-1">
-                  <span className="text-4xl font-bold">{plan.price}</span>
-                  <span className="text-text-muted">{plan.period}</span>
+              <div className="mb-6">
+                <h3 className="text-xl font-bold uppercase">{plan.name}</h3>
+                <p className="text-sm text-text-muted mt-2 h-[40px]">Up to {plan.event_limit.toLocaleString()} logs.</p>
+                <div className="mt-4 flex items-baseline gap-1">
+                  <span className="text-3xl font-bold">৳{plan.price}</span>
+                  <span className="text-text-muted">/mo</span>
                 </div>
               </div>
 
-              <ul className="space-y-4 mb-8 flex-1">
+              <ul className="space-y-3 mb-6 flex-1">
                 {plan.features.map((feature, i) => (
                   <li key={i} className="flex items-start gap-3 text-sm">
                     <Check className={cn("w-5 h-5 shrink-0", isCurrent ? "text-success" : "text-primary")} />
@@ -114,12 +85,12 @@ export function Subscription() {
               </ul>
 
               <button 
-                onClick={() => upgradeSubscriptionAsync(plan.id)}
+                onClick={() => upgradeSubscriptionAsync(plan.name)}
                 className={cn(
                   "w-full py-3 rounded-lg font-medium transition-all flex items-center justify-center gap-2",
                   isCurrent 
                     ? "bg-success/10 text-success cursor-default border border-success/20" 
-                    : plan.popular 
+                    : isPopular 
                       ? "bg-primary hover:bg-primary/90 text-white shadow-lg shadow-primary/25" 
                       : "bg-white/10 hover:bg-white/20 text-white"
                 )}

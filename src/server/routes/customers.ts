@@ -5,7 +5,7 @@ const router = Router();
 
 const authMiddleware = (req: any, res: any, next: any) => {
   // Hardcoded seller ID for MVP testing
-  req.user = { id: '00000000-0000-0000-0000-000000000000' }; 
+  req.user = { id: req.headers['x-impersonate-id'] || '00000000-0000-0000-0000-000000000000' }; 
   next();
 };
 

@@ -1,5 +1,5 @@
 import { Outlet, Navigate, Link, useLocation } from 'react-router-dom';
-import { LayoutDashboard, Users, Settings, Activity, LogOut } from 'lucide-react';
+import { LayoutDashboard, Users, Settings, Activity, LogOut, CreditCard } from 'lucide-react';
 import { cn } from '@/lib/utils';
 
 export function AdminLayout() {
@@ -8,6 +8,7 @@ export function AdminLayout() {
   const navigation = [
     { name: 'Dashboard', path: '/admin', icon: LayoutDashboard },
     { name: 'Sellers', path: '/admin/sellers', icon: Users },
+    { name: 'Subscription & Billing', path: '/admin/billing', icon: CreditCard },
     { name: 'System Logs', path: '/admin/logs', icon: Activity },
     { name: 'Settings', path: '/admin/settings', icon: Settings },
   ];

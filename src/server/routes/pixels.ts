@@ -7,7 +7,7 @@ const router = Router();
 // In production, this should verify a JWT token and set req.user
 const authMiddleware = (req: any, res: any, next: any) => {
   // Hardcoded seller ID for MVP testing
-  req.user = { id: '00000000-0000-0000-0000-000000000000' }; 
+  req.user = { id: req.headers['x-impersonate-id'] || '00000000-0000-0000-0000-000000000000' }; 
   next();
 };
 

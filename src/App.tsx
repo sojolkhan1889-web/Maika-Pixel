@@ -15,6 +15,7 @@ import { Analytics } from './pages/Analytics';
 import { AdminDashboard } from './pages/admin/AdminDashboard';
 import { AdminSellers } from './pages/admin/AdminSellers';
 import { AdminLogs } from './pages/admin/AdminLogs';
+import { AdminBilling } from './pages/admin/AdminBilling';
 
 export default function App() {
   return (
@@ -38,6 +39,7 @@ export default function App() {
         <Route path="/admin" element={<AdminLayout />}>
           <Route index element={<AdminDashboard />} />
           <Route path="sellers" element={<AdminSellers />} />
+          <Route path="billing" element={<AdminBilling />} />
           <Route path="logs" element={<AdminLogs />} />
           <Route path="*" element={<Navigate to="/admin" replace />} />
         </Route>
